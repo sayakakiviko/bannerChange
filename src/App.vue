@@ -1,15 +1,23 @@
 <template>
   <div class="container">
     <h2>轮播图</h2>
-    <banner-change :mode="0">
-      <div class="fly-banner-slider" v-for="(item,index) in imgList" :key="index">
-        <a :href="item.link" target="_blank">
-          <img :src="item.url" alt="">
-        </a>
+    <banner-change mode="card"
+                   :autoPlay="0"
+                   :isPage="false"
+                   @change="getIndex"
+                   v-if="imgList.length">
+      <div class="fly-banner-slider"
+           v-for="(item,index) in imgList"
+           :key="index">
+        <!--<a :href="item.link" target="_blank">-->
+        <img :src="item.url" alt="">
+        <!--</a>-->
       </div>
+      <!--<div class="fly-banner-extend" slot="extend">扩展内容：{{imgList[index].label}}</div>-->
     </banner-change>
   </div>
 </template>
+
 <script>
   import bannerChange from "./bannerChange/index";
   // import bannerChange from "../dist/bannerChange.umd";
@@ -19,23 +27,72 @@
     components: {bannerChange},
     data() {
       return {
-        imgList: [
+        index: 0,
+        getList: [
           {
-            link: 'https://www.baidu.com/',
-            url: 'assets/1.png'
+            label: '百度',
+            url: 'assets/show1.png'
           },
           {
-            link: 'https://www.qq.com/',
-            url: 'assets/2.png'
+            label: '腾讯',
+            url: 'assets/show2.png'
           },
           {
-            link: 'https://www.acfun.cn/',
-            url: 'assets/3.png'
+            label: '阿里',
+            url: 'assets/show3.png'
           },
-        ]
+          {
+            label: '百度',
+            url: 'assets/show4.png'
+          },
+          // {
+          //   label: '腾讯',
+          //   url: 'assets/show5.png'
+          // },
+          // {
+          //   label: '阿里',
+          //   url: 'assets/show6.png'
+          // },
+          // {
+          //   label: 'AcFun',
+          //   url: 'assets/show7.png'
+          // }
+        ],
+        imgList: []
       };
     },
+    mounted() {
+      //默认值
+      let arr = [
+        {
+          label: '百度',
+          link: 'https://www.baidu.com/',
+          url: 'assets/1.png'
+        },
+        {
+          label: '腾讯',
+          link: 'https://www.qq.com/',
+          url: 'assets/2.png'
+        },
+        {
+          label: 'AcFun',
+          link: 'https://www.acfun.cn/',
+          url: 'assets/3.png'
+        }];
+      setTimeout(() => {
+        this.imgList = this.getList.length ? this.getList : arr;
+      })
+    },
     methods: {
+      /**
+       * 获取轮播图下标
+       * @index {Number} 当前轮播图下标
+       * @oldIndex {Number} 原轮播图下标
+       * */
+      getIndex(index, oldIndex) {
+        // this.index = index;
+        console.log(index, oldIndex);
+      }
     }
   };
 </script>
@@ -94,10 +151,10 @@
 
   .fly-banner-container {
     margin: auto;
-    width: 299px;
-    height: 265px;
+    width: 570px; /*容器宽度*/
+    height: 465px;
     .fly-banner-slider {
-      width: 299px;
+      width: 285px; /*单张轮播图宽度*/
     }
   }
 </style>

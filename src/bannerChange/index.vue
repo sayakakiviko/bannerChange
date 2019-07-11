@@ -1,36 +1,55 @@
+<!--
+  * 轮播组件
+  * props： [mode-轮播模式，autoPlay-轮播间隔时长，multi-是否开启多图模式，arrow-上/下一张按钮显示时机，isPage-是否显示分页器，trigger-触发分页按钮轮播的事件]
+  * 事件：change（轮播图切换触发）
+ -->
 <template>
   <div class="fly-banner-container"
        ref="bannerContainer"
        @mouseenter="clearTimer"
        @mouseleave="auto">
-    <div class="fly-banner-wrapper" ref="bannerWrap">
+    <div class="fly-banner-wrapper" :class="{ card: mode === 'card' }" ref="bannerWrap">
+      <!--轮播图，class：fly-banner-slider-->
       <slot></slot>
     </div>
 
-    <!--分页器-->
-    <div class="fly-banner-pagination" v-if="page">
+    <!--扩展内容，class：fly-banner-extend-->
+    <slot name="extend"></slot>
+
+    <!--分页器，需要分页器且轮播图个数大于1-->
+    <div class="fly-banner-pagination" v-if="isPage && length > 1">
       <span v-for="(item,i) in length"
             :key="i"
-            :class="{on:i===index}"
-            @mouseenter="trigger!=='click'&&changePic(i)"
-            @click="trigger==='click'&&changePic(i)"></span>
+            :class="{ on: i === index }"
+            @mouseenter="(trigger !== 'click' && index !== i) && changePic(i,'page')"
+            @click="(trigger === 'click' && index !== i) && changePic(i,'page')">
+      </span>
     </div>
 
     <!-- 上/下一张按钮 -->
-    <div class="fly-banner-btn fly-banner-prev" v-if="arrow" :class="{hover:arrow===1}" @click="btnClick(false)"></div>
-    <div class="fly-banner-btn fly-banner-next" v-if="arrow" :class="{hover:arrow===1}" @click="btnClick(true)"></div>
+    <div class="fly-banner-btn fly-banner-prev"
+         v-if="arrow && length > 1"
+         :class="{ hover: arrow === 1 }"
+         @click="btnClick(false)">
+    </div>
+    <div class="fly-banner-btn fly-banner-next"
+         v-if="arrow && length > 1"
+         :class="{ hover: arrow === 1 }"
+         @click="btnClick(true)">
+    </div>
   </div>
 </template>
 
 <script>
   export default {
+    name: 'bannerChange',
     props: {
-      //切换模式。0为插卡式轮播，1为淡入淡出轮播，2为无缝轮播
+      //轮播模式。first为插卡式轮播（默认），loop无缝轮播，fade为淡入淡出轮播，card为3d轮播
       mode: {
-        type: Number,
-        default: 0
+        type: String,
+        default: 'first'
       },
-      //自动轮播间隔时长(ms)，0为关闭自动轮播
+      //轮播间隔时长(ms)，0为关闭自动轮播
       autoPlay: {
         type: Number,
         default: 3000
@@ -46,7 +65,7 @@
         default: 1
       },
       //是否显示分页器
-      page: {
+      isPage: {
         type: Boolean,
         default: true
       },
@@ -63,10 +82,11 @@
         containerWidth: 0,//容器宽度
         bannerWidth: 0,//每张轮播图占宽（含margin）
         length: 0,//轮播图个数
-        showNum: 0,//展示的轮播图个数
-        index: 0,//下标
-        clickTime: 0,//点击时间
+        showNum: 0,//展示的轮播图个数，multi为true时可用
+        index: 0,//索引
+        oldIndex: null,//上一次的索引
         timer: null,//计时器
+        clickTime: 0//点击时间
       };
     },
     mounted() {
@@ -81,30 +101,25 @@
         this.length = this.banner.length;
         this.containerWidth = this.$refs.bannerContainer.clientWidth;
         this.bannerWidth = parseFloat(getComputedStyle(this.banner[0]).width) + parseFloat(getComputedStyle(this.banner[0]).marginLeft) + parseFloat(getComputedStyle(this.banner[0]).marginRight);//获取单张轮播图含margin的真实宽
-        this.showNum = Math.ceil(this.containerWidth / this.bannerWidth);
-        this.multi && this.mode === 0 && (this.length = Math.ceil(this.length / this.showNum)); //总共切换的次数。默认轮播的多图模式下才会用
+        (this.multi && this.mode === 'first') && (this.length = Math.ceil(this.length / this.showNum)); //总共切换的次数。默认轮播的多图模式下才会用
 
         /* 轮播图的初始化 */
         switch (this.mode) {
           //默认轮播
-          case 0:
+          case 'first':
             this.parent.style.cssText = 'width:' + this.length + '00%;transition:left .5s';
             break;
-          //淡入淡出轮播
-          case 1:
-            for (let i = 0; i < this.length; i++) this.banner[i].style.cssText = 'position:absolute;opacity:0;filter:alpha(opacity=0)';//淡入淡出轮播的样式设置
-            this.banner[0].style.cssText = 'opacity:1;filter:alpha(opacity=100)';
-            break;
           //无缝轮播
-          case 2:
+          case 'loop':
             if (this.multi) { //多图无缝轮播
               let [tempArr, i] = [[]]; //临时存放要克隆的dom节点
               //首图放末尾
               for (i = 0; i < this.showNum; i++) {
                 this.parent.appendChild(this.banner[i].cloneNode(true));
-                tempArr.push(this.banner[this.showNum - i].cloneNode(true)); //保存所有需要克隆的节点
+                tempArr.push(this.banner[this.length - i].cloneNode(true)); //保存所有需要克隆的节点
               }
               //末图放前面
+              tempArr.reverse();//数组排序颠倒，方便倒序取值
               for (i = 0; i < this.showNum; i++) this.parent.insertBefore(tempArr[i], this.banner[0]); //倒序取出需要克隆的节点
               this.parent.style.cssText = 'width:' + (this.length + 2) + '00%;left:-' + this.containerWidth + 'px;transition:left 0s;';//此时过渡为0以保证初始化效果不让用户看到
               setTimeout(() => {
@@ -119,13 +134,39 @@
               });
             }
             break;
+          //淡入淡出轮播
+          case 'fade':
+            for (let i = 0; i < this.length; i++) this.banner[i].style.cssText = 'position:absolute;opacity:0;filter:alpha(opacity=0)';//淡入淡出轮播的样式设置
+            this.banner[0].style.cssText = 'opacity:1;filter:alpha(opacity=100)';
+            break;
+          //3D轮播
+          case 'card':
+            let half = this.containerWidth / 2,
+              scaleGap = this.bannerWidth * 0.15 / 2;//因变形变小而产生的边距
+            for (let i = 0; i < this.length; i++) this.banner[i].style.cssText = 'transform:translateX(-' + (half - scaleGap) + 'px) scale(0.85)';
+
+            this.addClassName(this.banner[0], 'on');
+            this.banner[0].style.cssText = 'transform:translateX(' + (half - this.bannerWidth / 2) + 'px) scale(1);';//当前
+
+            if (this.length > 1) {//下一张
+              this.addClassName(this.banner[1], 'show');
+              this.banner[1].style.cssText = 'transform:translateX(' + (half + scaleGap) + 'px) scale(0.85);';
+              this.banner[1].onclick = () => this.btnClick(true);//图片点击事件
+            }
+            if (this.length > 2) {//上一张
+              this.addClassName(this.banner[this.length - 1], 'show');
+              this.banner[this.length - 1].style.cssText = 'transform:translateX(' + (half - this.bannerWidth - scaleGap) + 'px) scale(0.85);';
+              this.banner[this.length - 1].onclick = () => this.btnClick(false);//图片点击事件
+            }
+            this.length > 3 && (this.banner[2].style.cssText = 'transform:translateX(' + (this.containerWidth - scaleGap) + 'px) scale(0.85);');//下下张
+            break;
         }
 
-        this.autoPlay && this.auto();//是否自动轮播
+        (this.autoPlay && this.length > 1) && this.auto();//是否自动轮播
       },
       /** 自动轮播 */
       auto() {
-        if (this.autoPlay) {
+        if (this.autoPlay && this.length > 1) { //自动轮播开启且轮播图个数大于1才自动轮播
           this.timer = setInterval(() => {
             this.changePic(this.index + 1);
           }, this.autoPlay);
@@ -141,70 +182,113 @@
        * */
       btnClick(bool) {
         if (new Date() - this.clickTime > 520) { //防止点击过快出现bug
-          bool ? this.changePic(this.index + 1) : this.changePic(this.index - 1);
+          bool ? this.changePic(this.index + 1, 'btn') : this.changePic(this.index - 1, 'btn', true);
           this.clickTime = new Date();
         }
       },
       /** 轮播图的切换
-       * @key {Number} 将要显示的图片的下标
+       * @key {Number} 将要显示的轮播的下标
+       * @type {String} 触发切换的方式。page为分页器触发，btn为上/下一张按钮触发，不传则自动触发
+       * @clickPrev {Boolean} 是否点击了上一张
        * */
-      changePic(key) {
-        this.mode === 1 && this.running(this.banner[this.index], 'opacity', 0, 400); //淡入淡出
+      changePic(key, type, clickPrev) {
+        this.clearTimer();
+        this.mode === 'fade' && this.running(this.banner[this.index], 'opacity', 0, 400); //淡入淡出
         this.index = key;
 
-        if (this.multi && this.mode === 2) {//若是多图的无缝轮播
-          if (this.index <= 0 - this.showNum) {//复位到最后一张
-            this.index = this.length - this.showNum;
-            this.delay(this.length);
-          } else if (this.index >= this.length) {//复位到第一张
-            this.index = 0;
+        if (this.multi && this.mode === 'loop') {//若是多图的无缝轮播
+          if (this.index < 0) {
+            this.index = this.length - 1;//复位到最后一张
+            this.delay(this.length + 1);
+          } else if (this.index >= this.length) {
+            this.index = 0;//复位到第一张
             this.delay(this.showNum);
           }
         } else {
           if (this.index < 0) {
             this.index = this.length - 1;
-            this.mode === 2 && this.delay(this.length); //无缝轮播才用。最后一张后面还有一张，所以图片应该是下标+1也就是length
+            this.mode === 'loop' && this.delay(this.length); //无缝轮播才用。最后一张后面还有一张，所以图片应该是下标+1也就是length
           } else if (this.index >= this.length) {
             this.index = 0;
-            this.mode === 2 && this.delay(1); //无缝轮播才用。下标0的图片是最后一张，下标1才是第一张
+            this.mode === 'loop' && this.delay(1); //无缝轮播才用。下标0的图片是最后一张，下标1才是第一张
           }
         }
 
         //图片的切换
         switch (this.mode) {
           //默认轮播
-          case 0:
+          case 'first':
+            var l = -this.index * this.containerWidth;
             //浏览器支持transition则用transition轮播，否则用运动方法轮播
-            let l = -this.index * this.containerWidth;
             this.supportCss3('transition') && (this.parent.style.left = l + 'px') || this.running(this.parent, 'left', l, '500');
             break;
-          //淡入淡出轮播
-          case 1:
-            this.running(this.banner[this.index], 'opacity', 1, 400);
-            break;
           //无缝轮播
-          case 2:
-            //浏览器支持transition则用transition轮播，否则用运动方法轮播
-            let normal = (key + 1) * this.containerWidth,
+          case 'loop':
+            var normal = (key + 1) * this.containerWidth,
               multi = key * this.bannerWidth + this.containerWidth;
             if (this.supportCss3('transition')) {//浏览器支持transition
               this.parent.style.left = (this.multi ? -multi : -normal) + 'px';
             } else {//不支持transition
               this.running(this.parent, 'left', this.multi ? -multi : -normal, '500');
               if (key >= this.length) {//最后一张到第一张
-                setTimeout(function () {
+                setTimeout(() => {
                   this.parent.style.left = '-' + this.containerWidth + 'px';
                 }, 520);
               } else if (key < -1) {//第一张到最后一张
-                setTimeout(function () {
+                setTimeout(() => {
                   this.parent.style.left = '-' + multi + 'px';
                 }, 520);
               }
             }
             break;
+          //淡入淡出轮播
+          case 'fade':
+            this.running(this.banner[this.index], 'opacity', 1, 400);
+            break;
+          //3D轮播
+          case 'card':
+            var half = this.containerWidth / 2,
+              scaleGap = this.bannerWidth * 0.15 / 2,//因变形而变小产生的边距
+              nextIndex = this.index + 1 >= this.length ? 0 : this.index + 1,//下一张的索引
+              prevIndex = this.index - 1 < 0 ? this.length - 1 : this.index - 1,//上一张的索引
+              nextAfter = nextIndex + 1 >= this.length ? 0 : nextIndex + 1,//下下张的索引
+              prevBefore = prevIndex - 1 < 0 ? this.length - 1 : prevIndex - 1;//上上张的索引
+            for (let i = 0; i < this.length; i++) {
+              this.removeClassName(this.banner[i], 'on show');//移除所有类名
+              this.banner[i].style.cssText = 'transform:translateX(-' + (half - scaleGap) + 'px) scale(0.85)';
+            }
+
+            this.addClassName(this.banner[this.index], 'on');
+            this.banner[this.index].style.cssText = 'transform:translateX(' + (half - this.bannerWidth / 2) + 'px) scale(1);';//当前
+            this.banner[this.index].onclick = null;
+
+            if (this.length > 1) {//下一张
+              this.banner[nextIndex].style.cssText = 'transform:translateX(' + (half + scaleGap) + 'px) scale(0.85);';
+              this.addClassName(this.banner[nextIndex], 'show');
+              this.banner[nextIndex].onclick = () => this.btnClick(true);//图片点击事件
+            }
+            if (this.length > 2) {//上一张
+              (this.length >= 4 && clickPrev) && (this.banner[prevIndex].style.cssText = 'transform:translateX(-' + (half - scaleGap) + 'px) scale(0.85);transition:transform 0s;');
+              setTimeout(() => {
+                this.banner[prevIndex].style.cssText = 'transform:translateX(' + (half - this.bannerWidth - scaleGap) + 'px) scale(0.85);transition:transform .4s;';
+                this.addClassName(this.banner[prevIndex], 'show');
+              }, 20);
+              this.banner[prevIndex].onclick = () => this.btnClick(false);//图片点击事件
+            }
+            this.length > 3 && (this.banner[nextAfter].style.cssText = 'transform:translateX(' + (this.containerWidth - scaleGap) + 'px) scale(0.85);');//下下张
+            break;
         }
 
+        if (type === 'btn') {//上/下一张按钮
+          clickPrev ? ++key : --key
+        } else if (type === 'page') {//分页器
+          key = this.oldIndex === null ? 0 : this.oldIndex;//首次触发和非首次触发
+          this.oldIndex = this.index;
+        } else {
+          --key;
+        }
         this.$emit('change', this.index, key);
+        !type && this.auto();//非事件触发才自动轮播
       },
       /** 无缝轮播对临界图片的处理（图片复位）
        * @x {Number} 将要显示的图片的下标(首尾两张图)
@@ -214,7 +298,7 @@
         //等动画完成之后再复位
         setTimeout(() => {
           this.parent.style.transition = 'left 0s';//去掉transition，以便瞬间复位
-          this.parent.style.left = '-' + left + 'px';//复位到看起来的第一张，实际的第二张。因为第一张和最后一张一样
+          this.parent.style.left = '-' + left + 'px';//复位到看起来的第一张，实际是最后一张。因为第一张和最后一张一样
           setTimeout(() => {
             this.parent.style.transition = 'left .5s';//同时执行无法达到瞬间复位效果，所以添加transition时要延迟下
           }, 20);
@@ -275,6 +359,45 @@
           }
         })();
       },
+      /**
+       * 添加类名
+       * @obj {Object} 操作的dom对象
+       * @cName {String} 要添加的类名，允许同时添加多个类名，用空格隔开
+       * */
+      addClassName: function (obj, cName) {
+        var oldArr = obj.className.split(' '), //原有类名数组
+          addArr = cName.split(' '), //新增类名数组
+          newArr = oldArr.concat(addArr), //拼接成新数组
+          json = {},
+          arr = [];
+
+        //过滤掉重复添加的类名
+        for (var i = 0, length = newArr.length; i < length; i++) {
+          if (!json[newArr[i]]) { //若json对象没有该值
+            arr.push(newArr[i]); //把该值push进数组
+            json[newArr[i]] = 1; //然后设为固定值
+          }
+        }
+        !arr[0] && arr.shift();//删除第一条空数据
+        obj.className = arr.join(' '); //用空格拼接成字符添加到类名去
+      },
+      /**
+       * 移除类名
+       * @obj {Object} 操作的dom对象
+       * @cName {String} 要移除的类名，允许同时移除多个类名，用空格隔开
+       * */
+      removeClassName: function (obj, cName) {
+        var oldArr = obj.className.split(' '), //原有类名数组
+          addArr = cName.split(' '); //需要删除的类名数组
+
+        //删除类名
+        for (var i = 0, length = oldArr.length; i < length; i++) {
+          for (var j = 0, len = addArr.length; j < len; j++) {
+            oldArr[i] === addArr[j] && oldArr.splice(i, 1);
+          }
+        }
+        obj.className = oldArr.join(' '); //用空格拼接成字符添加到类名去
+      }
     }
   };
 </script>
@@ -293,10 +416,38 @@
     position: relative;
     left: 0;
     height: 100%;
+    &.card .fly-banner-slider {
+      position: absolute;
+      left: 0;
+      top: 0;
+      z-index: -1;
+      cursor: pointer;
+      transform: translateX(0px) scale(0.85);
+      transition: transform .4s;
+      &.on {
+        z-index: 3;
+      }
+      &.show {
+        z-index: 2;
+      }
+    }
   }
 
   .fly-banner-slider {
     float: left;
+  }
+
+  .fly-banner-extend {
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    width: 100%;
+    height: 30px;
+    background-color: rgba(0, 0, 0, .5);
+    text-indent: 10px;
+    font-size: 14px;
+    line-height: 30px;
+    color: #fff;
   }
 
   .fly-banner-pagination {
@@ -304,7 +455,7 @@
     left: 0;
     right: 0;
     bottom: 10px;
-    z-index: 1;
+    z-index: 10;
     text-align: center;
   }
 
@@ -325,7 +476,7 @@
   .fly-banner-btn {
     position: absolute;
     top: 50%;
-    z-index: 1;
+    z-index: 10;
     width: 36px;
     height: 36px;
     background-color: rgba(31, 45, 61, .11);
