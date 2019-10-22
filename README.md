@@ -1,6 +1,4 @@
-<br>
-# 轮播图
-
+# 轮播图组件 V-1.2
 <p align="center">
   <img alt="GitHub release" src="https://img.shields.io/badge/release-v1.0.0-orange.svg?style=for-the-badge"/>
   <img alt="vue" src="https://img.shields.io/badge/vue-2.5.11-green.svg?style=for-the-badge"/>
@@ -25,11 +23,11 @@
 
 | 参数                | 说明                                                         | 类型    | 默认值   |
 | ------------------- | :----------------------------------------------------------- | ------- | -------- |
-| mode                | 轮播模式。first为默认轮播，loop无缝轮播，fade为淡入淡出轮播，card为3d轮播(card轮播它容器宽度需要两倍于图片宽度)           | String  | first        |
+| mode                | 轮播模式。base为默认轮播，baseY纵向轮播（需给slider设定为图片的高度），loop无缝轮播，fade为淡入淡出轮播，card为3d轮播           | String  | base        |
 | autoPlay                 | 自动轮播间隔时长(ms)，0为关闭自动轮播                          | Number  | 3000     |
-| multi             | 是否开启多图模式，一次显示多张图片时。即容器宽度大于单张轮播图宽度，可视区展示多张轮播图时可能需要开启。容器宽度最好是倍数方式大于单张轮播图的宽度                                           | Boolean  | false        |
+| many             | 多图模式展示的图片数量（可视区展示多张轮播图，仅对base、loop模式有效）                                           | Number  | 0        |
 | arrow          | 上/下一张按钮显示时机。0（不显示）， 1（悬停），2（一直显示）                           | Number  | 1       |
-| isPage             | 是否显示分页器。mode为card模式时建议隐藏分页器                                             | Boolean  | true     |
+| showPage             | 是否显示分页器。mode为card模式时建议隐藏分页器                                             | Boolean  | true     |
 | trigger             | 触发分页按钮轮播的事件，另一值为click | String  | mouseenter     |
 
 
@@ -43,7 +41,7 @@
 <br>
 
 ### 使用方法
-1、使用npm 下载组件到项目中，引入后，需要给容器指定宽高，给slider指定宽度（通常就指定为容器的宽度）
+1、使用npm 下载组件到项目中，引入后，需要给容器指定宽高（宽度为单张图片的宽度），给slider指定宽度（通常为容器的宽度）
 
 ```html
 <template>
@@ -68,7 +66,8 @@ export default {
   components: { bannerChange },
   data() {
     return {
-      index: 0,
+      index: 0,// 当前图片下标
+      // 图片数据
       imgList: [
         {
           label: '百度',
@@ -93,7 +92,7 @@ export default {
     getIndex(curIndex,oldIndex){
       this.index = curIndex;
       console.log('当前索引：' + curIndex);
-      console.log('原索引：' + oldIndex));
+      console.log('原索引：' + oldIndex);
     }
   }
 };
@@ -102,8 +101,7 @@ export default {
 ```css
 <style>
   .fly-banner-container {
-    margin: auto;
-    width: 299px; /*容器宽度*/
+    width: 299px; /*不论何种模式，容器宽高指定为图片宽高即可*/
     height: 265px;
     .fly-banner-slider {
       width: 299px; /*单张轮播图/轮播区域宽度*/

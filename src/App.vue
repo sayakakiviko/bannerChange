@@ -1,9 +1,8 @@
 <template>
   <div class="container">
     <h2>轮播图</h2>
-    <banner-change mode="card"
+    <banner-change mode="baseY"
                    :autoPlay="0"
-                   :isPage="false"
                    @change="getIndex"
                    v-if="imgList.length">
       <div class="fly-banner-slider"
@@ -41,10 +40,10 @@
             label: '阿里',
             url: 'assets/show3.png'
           },
-          {
-            label: '百度',
-            url: 'assets/show4.png'
-          },
+          // {
+          //   label: '百度',
+          //   url: 'assets/show4.png'
+          // },
           // {
           //   label: '腾讯',
           //   url: 'assets/show5.png'
@@ -58,7 +57,7 @@
           //   url: 'assets/show7.png'
           // }
         ],
-        imgList: []
+        imgList: []// 注意：imgList若有默认值需要在接口请求处设置，不要在data里设置默认值
       };
     },
     mounted() {
@@ -151,10 +150,11 @@
 
   .fly-banner-container {
     margin: auto;
-    width: 570px; /*容器宽度*/
+    width: 285px; /*容器宽度*/
     height: 465px;
     .fly-banner-slider {
       width: 285px; /*单张轮播图宽度*/
+      height: 465px;
     }
   }
 </style>

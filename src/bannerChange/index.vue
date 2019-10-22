@@ -1,6 +1,6 @@
 <!--
   * 轮播组件
-  * props： [mode-轮播模式，autoPlay-轮播间隔时长，multi-是否开启多图模式，arrow-上/下一张按钮显示时机，isPage-是否显示分页器，trigger-触发分页按钮轮播的事件]
+  * props： [mode-轮播模式，autoPlay-轮播间隔时长，many-多图模式展示的图片数量，arrow-上/下一张按钮显示时机，showPage-是否显示分页器，trigger-触发分页按钮轮播的事件]
   * 事件：change（轮播图切换触发）
  -->
 <template>
@@ -17,7 +17,7 @@
     <slot name="extend"></slot>
 
     <!--分页器，需要分页器且轮播图个数大于1-->
-    <div class="fly-banner-pagination" v-if="isPage && length > 1">
+    <div class="fly-banner-pagination" v-if="showPage && length > 1">
       <span v-for="(item,i) in length"
             :key="i"
             :class="{ on: i === index }"
@@ -44,20 +44,20 @@
   export default {
     name: 'bannerChange',
     props: {
-      //轮播模式。first为插卡式轮播（默认），loop无缝轮播，fade为淡入淡出轮播，card为3d轮播
+      //轮播模式。base为插卡式轮播（默认），baseY纵向轮播（需给slider设定为图片的高度 ），loop无缝轮播，fade为淡入淡出轮播，card为3d轮播
       mode: {
         type: String,
-        default: 'first'
+        default: 'base'
       },
       //轮播间隔时长(ms)，0为关闭自动轮播
       autoPlay: {
         type: Number,
         default: 3000
       },
-      //是否开启多图模式，默认false（可视区展示多张轮播图，即容器宽度大于单张轮播图宽度时需要开启。容器宽度最好是倍数方式大于slider的宽度）
-      multi: {
-        type: Boolean,
-        default: false
+      //多图模式展示的图片数量（可视区展示多张轮播图，仅对base、loop模式有效）。默认关闭多图模式
+      many: {
+        type: Number,
+        default: 0
       },
       //上/下一张按钮显示时机。0（不显示）， 1（悬停），2（一直显示）
       arrow: {
@@ -65,7 +65,7 @@
         default: 1
       },
       //是否显示分页器
-      isPage: {
+      showPage: {
         type: Boolean,
         default: true
       },
@@ -80,9 +80,10 @@
         parent: null,//轮播图父级
         banner: null,//轮播图
         containerWidth: 0,//容器宽度
+        containerHeight: 0,//容器高度
         bannerWidth: 0,//每张轮播图占宽（含margin）
         length: 0,//轮播图个数
-        showNum: 0,//展示的轮播图个数，multi为true时可用
+        showNum: 0,//展示的轮播图个数，many启用时可用
         index: 0,//索引
         oldIndex: null,//上一次的索引
         timer: null,//计时器
@@ -100,19 +101,31 @@
         this.banner = this.$refs.bannerWrap.children;
         this.length = this.banner.length;
         this.containerWidth = this.$refs.bannerContainer.clientWidth;
+        this.containerHeight = this.$refs.bannerContainer.clientHeight;
+
+        //若在base或loop模式下开启了多图模式，或为card模式时
+        if ((this.many && (this.mode === 'base' || this.mode === 'loop')) || this.mode === 'card') {
+          this.$refs.bannerContainer.style.width = this.containerWidth * this.many + 'px'; //容器宽度*this.many
+          this.containerWidth *= this.many; //重新获取容器的宽度
+        }
         this.bannerWidth = parseFloat(getComputedStyle(this.banner[0]).width) + parseFloat(getComputedStyle(this.banner[0]).marginLeft) + parseFloat(getComputedStyle(this.banner[0]).marginRight);//获取单张轮播图含margin的真实宽
-        (this.multi && this.mode === 'first') && (this.length = Math.ceil(this.length / this.showNum)); //总共切换的次数。默认轮播的多图模式下才会用
+        this.showNum = Math.ceil(this.containerWidth / this.bannerWidth);
+        (this.many && this.mode === 'base') && (this.length = Math.ceil(this.length / this.showNum)); //总共切换的次数。默认轮播的多图模式下才会用
 
         /* 轮播图的初始化 */
         switch (this.mode) {
           //默认轮播
-          case 'first':
-            this.parent.style.cssText = 'width:' + this.length + '00%;transition:left .5s';
+          case 'base':
+            this.parent.style.cssText = 'width:' + this.length + '00%;';
+            break;
+          //纵向轮播
+          case 'baseY':
+            this.parent.style.cssText = 'height:' + this.length + '00%;';
             break;
           //无缝轮播
           case 'loop':
-            if (this.multi) { //多图无缝轮播
-              let [tempArr, i] = [[]]; //临时存放要克隆的dom节点
+            if (this.many) { //多图无缝轮播
+              let tempArr = [], i; //临时存放要克隆的dom节点
               //首图放末尾
               for (i = 0; i < this.showNum; i++) {
                 this.parent.appendChild(this.banner[i].cloneNode(true));
@@ -124,14 +137,14 @@
               this.parent.style.cssText = 'width:' + (this.length + 2) + '00%;left:-' + this.containerWidth + 'px;transition:left 0s;';//此时过渡为0以保证初始化效果不让用户看到
               setTimeout(() => {
                 this.parent.style.transition = 'left .5s';
-              });
+              }, 100);
             } else { //普通无缝轮播
               this.parent.appendChild(this.banner[0].cloneNode(true)); //首图放末尾
               this.parent.insertBefore(this.banner[this.length - 1].cloneNode(true), this.banner[0]); //末图放到第一张
               this.parent.style.cssText = 'width:' + (this.length + 2) + '00%;left:-' + this.containerWidth + 'px;transition:left 0s;';//此时过渡为0以保证初始化效果不让用户看到
               setTimeout(() => {
                 this.parent.style.transition = 'left .5s';
-              });
+              }, 100);
             }
             break;
           //淡入淡出轮播
@@ -196,7 +209,7 @@
         this.mode === 'fade' && this.running(this.banner[this.index], 'opacity', 0, 400); //淡入淡出
         this.index = key;
 
-        if (this.multi && this.mode === 'loop') {//若是多图的无缝轮播
+        if (this.many && this.mode === 'loop') {//若是多图的无缝轮播
           if (this.index < 0) {
             this.index = this.length - 1;//复位到最后一张
             this.delay(this.length + 1);
@@ -217,26 +230,32 @@
         //图片的切换
         switch (this.mode) {
           //默认轮播
-          case 'first':
-            var l = -this.index * this.containerWidth;
+          case 'base':
             //浏览器支持transition则用transition轮播，否则用运动方法轮播
-            this.supportCss3('transition') && (this.parent.style.left = l + 'px') || this.running(this.parent, 'left', l, '500');
+            var w = -this.index * this.containerWidth;
+            this.supportCss3('transition') && (this.parent.style.left = w + 'px') || this.running(this.parent, 'left', w, '500');
+            break;
+          //纵向轮播
+          case 'baseY':
+            //浏览器支持transition则用transition轮播，否则用运动方法轮播
+            var h = -this.index * this.containerHeight;
+            this.supportCss3('transition') && (this.parent.style.top = h + 'px') || this.running(this.parent, 'top', h, '500');
             break;
           //无缝轮播
           case 'loop':
             var normal = (key + 1) * this.containerWidth,
-              multi = key * this.bannerWidth + this.containerWidth;
+              many = key * this.bannerWidth + this.containerWidth;
             if (this.supportCss3('transition')) {//浏览器支持transition
-              this.parent.style.left = (this.multi ? -multi : -normal) + 'px';
+              this.parent.style.left = (this.many ? -many : -normal) + 'px';
             } else {//不支持transition
-              this.running(this.parent, 'left', this.multi ? -multi : -normal, '500');
+              this.running(this.parent, 'left', this.many ? -many : -normal, '500');
               if (key >= this.length) {//最后一张到第一张
                 setTimeout(() => {
                   this.parent.style.left = '-' + this.containerWidth + 'px';
                 }, 520);
               } else if (key < -1) {//第一张到最后一张
                 setTimeout(() => {
-                  this.parent.style.left = '-' + multi + 'px';
+                  this.parent.style.left = '-' + many + 'px';
                 }, 520);
               }
             }
@@ -294,7 +313,7 @@
        * @x {Number} 将要显示的图片的下标(首尾两张图)
        * **/
       delay(x) {
-        let left = x * (this.multi && this.bannerWidth || this.containerWidth);
+        let left = x * (this.many && this.bannerWidth || this.containerWidth);
         //等动画完成之后再复位
         setTimeout(() => {
           this.parent.style.transition = 'left 0s';//去掉transition，以便瞬间复位
@@ -415,7 +434,9 @@
   .fly-banner-wrapper {
     position: relative;
     left: 0;
+    top: 0;
     height: 100%;
+    transition: left .5s, top .5s;
     &.card .fly-banner-slider {
       position: absolute;
       left: 0;
