@@ -1,4 +1,4 @@
-# 轮播图组件 V-1.2
+# 轮播图组件
 <p align="center">
   <img alt="GitHub release" src="https://img.shields.io/badge/release-v1.0.0-orange.svg?style=for-the-badge"/>
   <img alt="vue" src="https://img.shields.io/badge/vue-2.5.11-green.svg?style=for-the-badge"/>
@@ -104,7 +104,8 @@ export default {
     width: 299px; /*不论何种模式，容器宽高指定为图片宽高即可*/
     height: 265px;
     .fly-banner-slider {
-      width: 299px; /*单张轮播图/轮播区域宽度*/
+      width: 299px; /*单张轮播图/轮播区域宽度。与container设置的宽高保持一致即可*。slider通常只设置宽度/
+      height: 265px;
     }
   }
 </style>

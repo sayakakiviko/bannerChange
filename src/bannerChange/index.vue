@@ -105,6 +105,7 @@
 
         //若在base或loop模式下开启了多图模式，或为card模式时
         if ((this.many && (this.mode === 'base' || this.mode === 'loop')) || this.mode === 'card') {
+          this.mode === 'card' && (this.many = 2);//card模式many需要为2
           this.$refs.bannerContainer.style.width = this.containerWidth * this.many + 'px'; //容器宽度*this.many
           this.containerWidth *= this.many; //重新获取容器的宽度
         }
@@ -120,7 +121,10 @@
             break;
           //纵向轮播
           case 'baseY':
-            this.parent.style.cssText = 'height:' + this.length + '00%;';
+            this.parent.appendChild(this.banner[0].cloneNode(true)); //首图放末尾
+            this.parent.insertBefore(this.banner[this.length - 1].cloneNode(true), this.banner[0]); //末图放到第一张
+            this.parent.style.cssText = 'height:' + (this.length + 2) + '00%;top:-' + this.containerHeight + 'px;transition:top 0s;';//此时过渡为0以保证初始化效果不让用户看到
+            setTimeout(() => this.parent.style.transition = 'top .5s', 100);
             break;
           //无缝轮播
           case 'loop':
@@ -221,9 +225,11 @@
           if (this.index < 0) {
             this.index = this.length - 1;
             this.mode === 'loop' && this.delay(this.length); //无缝轮播才用。最后一张后面还有一张，所以图片应该是下标+1也就是length
+            this.mode === 'baseY' && this.delayY(this.length);
           } else if (this.index >= this.length) {
             this.index = 0;
             this.mode === 'loop' && this.delay(1); //无缝轮播才用。下标0的图片是最后一张，下标1才是第一张
+            this.mode === 'baseY' && this.delayY(1);
           }
         }
 
@@ -238,8 +244,11 @@
           //纵向轮播
           case 'baseY':
             //浏览器支持transition则用transition轮播，否则用运动方法轮播
-            var h = -this.index * this.containerHeight;
-            this.supportCss3('transition') && (this.parent.style.top = h + 'px') || this.running(this.parent, 'top', h, '500');
+            // var h = -this.index * this.containerHeight;
+            // this.supportCss3('transition') && (this.parent.style.top = h + 'px') || this.running(this.parent, 'top', h, '500');
+
+            var h = (key + 1) * this.containerHeight;
+            this.supportCss3('transition') ? (this.parent.style.top = -h + 'px') : this.running(parent, 'top', -h, '500');
             break;
           //无缝轮播
           case 'loop':
@@ -320,6 +329,20 @@
           this.parent.style.left = '-' + left + 'px';//复位到看起来的第一张，实际是最后一张。因为第一张和最后一张一样
           setTimeout(() => {
             this.parent.style.transition = 'left .5s';//同时执行无法达到瞬间复位效果，所以添加transition时要延迟下
+          }, 20);
+        }, 520);
+      },
+      /** 纵向无缝轮播对临界图片的处理（图片复位）
+       * @x {Number} 将要显示的图片的下标(首尾两张图)
+       * **/
+      delayY(x) {
+        var top = x * this.containerHeight;
+        //等动画完成之后再复位
+        setTimeout(() => {
+          this.parent.style.transition = 'top 0s';//去掉transition，以便瞬间复位
+          this.parent.style.top = '-' + top + 'px';//复位到看起来的第一张，实际的第二张。因为第一张和最后一张一样
+          setTimeout(() => {
+            this.parent.style.transition = 'top .5s';//同时执行无法达到瞬间复位效果，所以添加transition时要延迟下
           }, 20);
         }, 520);
       },

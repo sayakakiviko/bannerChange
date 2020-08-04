@@ -154,7 +154,7 @@
     height: 465px;
     .fly-banner-slider {
       width: 285px; /*单张轮播图宽度*/
-      height: 465px;
+      /*height: 465px;*/
     }
   }
 </style>
